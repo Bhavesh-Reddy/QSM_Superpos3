@@ -1,0 +1,1 @@
+"""QuMail test suite (pytest). Run from the ``qumail/`` project root."""
