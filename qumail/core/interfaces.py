@@ -99,7 +99,7 @@ class IKMClient(abc.ABC):
         """
 
     @abc.abstractmethod
-    def get_enc_keys(
+    def get_key(
         self, slave_sae_id: str, number: int = 1, size: int = 256
     ) -> list[QKDKey]:
         """Request fresh keys for encrypting toward a peer.
@@ -120,7 +120,9 @@ class IKMClient(abc.ABC):
         """
 
     @abc.abstractmethod
-    def get_dec_keys(self, master_sae_id: str, key_ids: list[str]) -> list[QKDKey]:
+    def get_key_with_ids(
+        self, master_sae_id: str, key_ids: list[str]
+    ) -> list[QKDKey]:
         """Fetch the keys matching IDs received from a peer.
 
         Maps to ``POST /api/v1/keys/{master_SAE_ID}/dec_keys``.
@@ -146,7 +148,7 @@ class IEmailService(abc.ABC):
         """Pack an encrypted message as ``.qenc`` MIME and submit via SMTP.
 
         Args:
-            message: Plaintext envelope (sender, recipients, subject).
+            message: Plaintext envelope (sender, recipient, subject).
             encrypted: Payload produced by the crypto engine.
 
         Returns:
@@ -213,18 +215,4 @@ class IKeyStore(abc.ABC):
             KeyNotFoundError: If ``key_id`` is not in the store.
             KeyAlreadyConsumedError: If the key was consumed before
                 (CLAUDE.md constraint #2 — never reuse OTP keys).
-        """
-
-    @abc.abstractmethod
-    def is_consumed(self, key_id: str) -> bool:
-        """Report whether a key has already been used.
-
-        Args:
-            key_id: The KM-assigned key ID.
-
-        Returns:
-            True if the key exists and is consumed.
-
-        Raises:
-            KeyNotFoundError: If ``key_id`` is not in the store.
         """

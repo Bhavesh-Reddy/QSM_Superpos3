@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import enum
 from datetime import datetime, timezone
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -118,16 +119,16 @@ class QKDKey(BaseModel):
     ``key_id`` and status metadata.
 
     Attributes:
-        key_id: UUID matching the KM's ``key_ID``.
+        key_id: UUID matching the KM's ``key_ID``. Must be non-empty.
         key: Raw key material (decoded from base64).
-        size_bits: Key length in bits.
+        size_bits: Key length in bits. Must be positive.
         consumed: True once the key has been used for OTP (single-use).
         created_at: UTC timestamp when the key was cached locally.
     """
 
-    key_id: str
+    key_id: str = Field(min_length=1)
     key: bytes
-    size_bits: int
+    size_bits: int = Field(gt=0)
     consumed: bool = False
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -150,22 +151,32 @@ class EmailMessage(BaseModel):
     """A plaintext email as composed by / shown to the user.
 
     Attributes:
-        sender: RFC 5321 ``From`` address.
-        recipients: RFC 5321 ``To`` addresses.
+        sender: RFC 5321 ``From`` address. Must be non-empty.
+        recipient: RFC 5321 ``To`` address. Must be non-empty.
         subject: Subject line (never encrypted; keep it non-sensitive).
         body: Plaintext body.
         attachments: Plaintext attachments.
+        timestamp: When the message was composed/received (UTC).
+        security_metadata: Crypto parameters parsed from / packed into the
+            ``.qenc`` MIME headers (see :class:`CryptoMetadata` for the shape).
+            None for plain (level 4) messages.
     """
 
-    sender: str
-    recipients: list[str]
+    sender: str = Field(min_length=1)
+    recipient: str = Field(min_length=1)
     subject: str = ""
     body: str = ""
     attachments: list[EmailAttachment] = Field(default_factory=list)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    security_metadata: dict[str, Any] | None = None
 
 
 class CryptoMetadata(BaseModel):
-    """Algorithm parameters shipped alongside ciphertext in the ``.qenc`` MIME part.
+    """Typed builder for the ``EncryptedMessage.metadata`` dict.
+
+    The wire format is a plain dict (see :class:`EncryptedMessage`); modules
+    should construct it via ``CryptoMetadata(...).model_dump(exclude_none=True)``
+    so field names stay consistent across the codebase.
 
     Only the fields relevant to the chosen algorithm are populated; all
     binary values are base64-encoded strings so the model serializes to
@@ -195,11 +206,12 @@ class EncryptedMessage(BaseModel):
     """Ciphertext plus everything the recipient needs to decrypt it.
 
     Attributes:
-        security_level: Level the message was encrypted at.
         ciphertext: Encrypted payload bytes.
-        metadata: Algorithm parameters (IVs, tags, key IDs — no key bytes).
+        metadata: Algorithm parameters as a JSON-safe dict (IVs, tags, key
+            IDs — never key bytes). Build it via :class:`CryptoMetadata`.
+        level: Security level the message was encrypted at.
     """
 
-    security_level: SecurityLevel
     ciphertext: bytes
-    metadata: CryptoMetadata
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    level: SecurityLevel
