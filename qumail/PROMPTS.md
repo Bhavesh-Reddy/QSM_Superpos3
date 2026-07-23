@@ -1,10 +1,40 @@
 # QuMail — Per-Module Task Prompts
 
-Use these one at a time in Claude Code **after** the bootstrap (MASTER_PROMPT.md) completes.
-Every prompt assumes `CLAUDE.md` is in the repo and already read. Each follows the same shape:
-**Persona · Goal · Inputs · Constraints · Output/Format · Tests.**
+**How to use this file:** find your row in the Execution Order table below, scroll to your prompt, copy the whole fenced block, and paste it into Claude Code as a fresh message. `CLAUDE.md` must be in the repo root — every prompt assumes Claude has read it.
 
-Recommended order: **core → M6 → M4 → M3 → M7 → M5 → M2 → M1 → integration.**
+Each prompt follows the same shape: **Goal · Files · Requirements · Constraints · Tests.**
+When your prompt finishes: run the printed test command, review the diff, commit, then hand off.
+
+---
+
+## Execution Order
+
+Work in waves. Everything inside a wave can run in parallel; don't start a wave until the previous one is committed.
+
+| Wave | Owner | Prompt | Module | Blocked by |
+|------|-------|--------|--------|-----------|
+| **0** | Anyone | **A** — core contracts | `core/` | — |
+| **0** | Anyone | **A2** — services folder patch | scaffold fix | A |
+| **1** | Member A | **B** — KM Simulator | M6 | A |
+| **1** | Member B | **D** — Crypto Engine | M3 | A |
+| **1** | Member C | **F** — Email Service | M5 | A |
+| **2** | Member A | **C** — KM Client | M4 | B |
+| **2** | Member A | **E** — Key Store | M7 | A |
+| **2** | Member B + C | *agree on `docs/api_contract.md`* | contract | — |
+| **3** | Member B | **G1** — Orchestration Services | M2a | C, D, E, F |
+| **3** | Member C | **G2** — API Surface | M2b | G1 contract |
+| **4** | Member C | **H** — Frontend | M1 | G2 |
+| **5** | All | **I** — Integration & packaging | — | H |
+
+### Ownership
+
+| Member | Role | Prompts | Folders |
+|--------|------|---------|---------|
+| **A** | Quantum & Keys | B, C, E | `km_simulator/`, `backend/app/km/`, `backend/app/keystore/` |
+| **B** | Security Core | A, D, **G1** | `core/`, `backend/app/crypto/`, `backend/app/services/` |
+| **C** | App & Integration | F, **G2**, H, I | `frontend/`, `backend/app/email_svc/`, `backend/app/api/`, packaging |
+
+> **Note on M2:** it is deliberately split in two. **G1 (M2a)** is the orchestration logic — the order in which keys are fetched, applied, and consumed. That's security-critical, so it sits with Member B. **G2 (M2b)** is the HTTP surface the frontend talks to, so it sits with Member C.
 
 ---
 
@@ -31,7 +61,31 @@ Then print the pytest command.
 
 ---
 
-## PROMPT B — M6 KM Simulator (Qiskit, ETSI 014)
+## PROMPT A2 — services/ folder patch (run once, right after A)
+
+The original bootstrap created `backend/app/api/` but not `backend/app/services/`. This patch adds it so M2 can be split. Run once; skip if `backend/app/services/` already exists.
+
+```
+Per CLAUDE.md. Small structural patch to the existing scaffold — do NOT modify already-implemented code.
+
+1. Create backend/app/services/ containing __init__.py, send_service.py, receive_service.py
+   as typed stubs (docstrings + signatures only, no logic yet). This is M2a — orchestration.
+2. Update DIRECTORY_STRUCTURE.md: add backend/app/services/ under backend/app/, labelled
+   "M2a — orchestration (Member B)". Relabel backend/app/api/ as "M2b — HTTP surface (Member C)".
+3. Update CLAUDE.md section 3: split M2 into
+   M2a Services (orchestration: key -> encrypt -> send / fetch -> key -> decrypt) and
+   M2b API (FastAPI routers, schemas, exception mapping).
+   Note that services import ONLY core/interfaces.py and must contain no FastAPI imports.
+4. Update the ownership table: Member B owns core/, crypto/, services/;
+   Member C owns frontend/, email_svc/, api/, packaging.
+5. Create tests/test_send_service.py and tests/test_receive_service.py with a placeholder test each.
+
+Show me the diff summary, then print the pytest command.
+```
+
+---
+
+## PROMPT B — M6 KM Simulator (Qiskit, ETSI 014) · *Member A*
 
 ```
 Per CLAUDE.md. Implement km_simulator/ as a standalone FastAPI service.
@@ -44,7 +98,7 @@ Requirements:
   fall back to secrets.token_bytes if Qiskit unavailable, logging a warning. Expose get_random_key(size_bits)->bytes.
 - bb84.py: simulate BB84 between Alice/Bob (prepare in random bases, measure, sift, estimate QBER). Return sifted key + QBER.
   This doubles as an educational module for the demo.
-- main.py: FastAPI with exactly these endpoints (match CLAUDE.md §8):
+- main.py: FastAPI with exactly these endpoints (match CLAUDE.md section 8):
   GET  /api/v1/keys/{sae_id}/status
   POST /api/v1/keys/{sae_id}/enc_keys   -> generate N keys of `size` bits, store in an in-memory dict keyed by key_ID, return {keys:[{key_ID, key(b64)}]}
   POST /api/v1/keys/{sae_id}/dec_keys   -> look up requested key_IDs, return matching {key_ID, key(b64)}
@@ -58,7 +112,7 @@ Print run + test commands.
 
 ---
 
-## PROMPT C — M4 KM Client (ETSI 014 REST client)
+## PROMPT C — M4 KM Client (ETSI 014 REST client) · *Member A*
 
 ```
 Per CLAUDE.md. Implement backend/app/km/client.py implementing IKMClient.
@@ -80,10 +134,10 @@ Print test command.
 
 ---
 
-## PROMPT D — M3 Crypto Engine (all 4 levels)
+## PROMPT D — M3 Crypto Engine (all 4 levels) · *Member B*
 
 ```
-Per CLAUDE.md §7. Implement backend/app/crypto/ implementing ICryptoEngine.
+Per CLAUDE.md section 7. Implement backend/app/crypto/ implementing ICryptoEngine.
 
 Goal: correct, tested encryption for all four levels behind one facade.
 Files: engine.py (facade), otp.py, quantum_aes.py, pqc.py, kdf.py.
@@ -102,7 +156,7 @@ Print test command.
 
 ---
 
-## PROMPT E — M7 KeyStore (encrypted at rest, OTP one-time use)
+## PROMPT E — M7 KeyStore (encrypted at rest, OTP one-time use) · *Member A*
 
 ```
 Per CLAUDE.md. Implement backend/app/keystore/store.py implementing IKeyStore.
@@ -122,7 +176,7 @@ Print test command.
 
 ---
 
-## PROMPT F — M5 Email Service (SMTP/IMAP + .qenc MIME)
+## PROMPT F — M5 Email Service (SMTP/IMAP + .qenc MIME) · *Member C*
 
 ```
 Per CLAUDE.md. Implement backend/app/email_svc/ implementing IEmailService.
@@ -144,35 +198,87 @@ Print test command.
 
 ---
 
-## PROMPT G — M2 API wiring (FastAPI)
+## PROMPT G1 — M2a Orchestration Services · *Member B*
+
+> Before starting: agree `docs/api_contract.md` with Member C.
 
 ```
-Per CLAUDE.md. Implement backend/app/api/ routers and wire modules in backend/main.py.
+Per CLAUDE.md. Implement backend/app/services/ — the orchestration layer between the API and the modules.
 
-Goal: thin REST layer the frontend calls; orchestrates encrypt-then-send and fetch-then-decrypt.
-Endpoints (see docs/api_contract.md — create it):
-- POST /auth/km {base_url, sae_id}        -> connect KMClient, return status
-- POST /auth/email {email, password, provider} -> connect EmailService
-- POST /mail/send {to, subject, body, level, attachments?} -> get key (if L1/L2), encrypt, send; return {message_id, key_id, level}
-- GET  /mail/fetch?folder=INBOX&limit=50  -> list summaries (never include key bytes)
-- POST /mail/read {message_id}            -> fetch, pull key via dec_keys, decrypt, return plaintext + metadata
-- GET  /keys/status                       -> KM status
+Goal: encapsulate the two end-to-end flows so routers stay thin and all security sequencing lives in one reviewable place.
+Files: services/__init__.py, services/send_service.py, services/receive_service.py.
 
-Constraints: routers stay thin; all logic via M3/M4/M5/M7. Map typed exceptions to HTTP codes (KMConnectionError->502, KeyExhaustedError->409, DecryptionError->400, EmailError->502). Secrets from config, not query params in logs.
-Tests: httpx TestClient smoke tests for each route with modules mocked.
+Requirements:
+- SendService(crypto: ICryptoEngine, km: IKMClient, mail: IEmailService, store: IKeyStore)
+  send(to, subject, body, level, attachments=None):
+    L1/L2 -> request key via km.get_key(target_sae_id=<recipient>, size=<needed>);
+             for L1 the key size must be >= len(plaintext) in bits (raise otherwise);
+             persist via store.put(); encrypt via crypto.encrypt();
+             for L1 only, mark spent via store.consume();
+             put key_id into security metadata (NEVER key bytes); call mail.send
+    L3    -> no KM call; PQC path via crypto.encrypt()
+    L4    -> passthrough
+    returns {message_id, key_id|None, level}
+- ReceiveService(crypto, km, mail, store)
+  read(message_id): fetch message, read key_id from metadata,
+    resolve key: store.get(key_id) first, else km.get_key_with_ids(...);
+    decrypt via crypto.decrypt(); return plaintext + metadata
+- Raise only typed exceptions from core/exceptions.py.
+- Log key_ids and levels only — never key bytes.
+
+Constraints: services depend ONLY on the interfaces in core/interfaces.py, injected via constructor,
+so they are unit-testable with fakes. NO FastAPI imports anywhere in this folder.
+Tests: tests/test_send_service.py and tests/test_receive_service.py using fake implementations of all
+four interfaces — assert call ORDER (key before encrypt, encrypt before send), assert OTP consumes its
+key exactly once, assert L3/L4 make no KM call, assert a short OTP key raises.
+Print the test command.
+```
+
+---
+
+## PROMPT G2 — M2b API Surface · *Member C*
+
+> Before starting: agree `docs/api_contract.md` with Member B.
+
+```
+Per CLAUDE.md. Implement backend/app/api/ and backend/main.py — the HTTP layer over the services from G1.
+
+Goal: a thin, typed REST surface the frontend calls. Zero business logic here.
+Files: api/routes_auth.py, api/routes_mail.py, api/routes_keys.py, app/config.py, backend/main.py, docs/api_contract.md.
+
+Endpoints:
+- POST /auth/km    {base_url, sae_id}                        -> connect KMClient, return status
+- POST /auth/email {email, password, provider}                -> connect EmailService
+- POST /mail/send  {to, subject, body, level, attachments?}   -> delegate to SendService
+- GET  /mail/fetch?folder=INBOX&limit=50                      -> summaries only, never key bytes
+- POST /mail/read  {message_id}                               -> delegate to ReceiveService
+- GET  /keys/status                                           -> KM status
+
+Requirements:
+- Pydantic v2 request/response models per endpoint; responses never include raw key material.
+- Build service objects once at startup; inject into routes via FastAPI Depends.
+- Exception handler mapping: KMConnectionError->502, KeyExhaustedError->409, KeyNotFoundError->404,
+  DecryptionError->400, EmailError->502, ConfigError->500.
+- config.py via pydantic-settings reading .env (KM_BASE_URL, SAE_ID, ...). CORS for the Vite dev origin.
+- Write docs/api_contract.md documenting every endpoint with example request/response JSON.
+
+Constraints: routers contain NO crypto/KM/email calls — only validate, delegate, serialize.
+Never log request bodies containing passwords.
+Tests: httpx TestClient smoke test per route with services mocked; assert each typed exception maps to
+the correct HTTP status code.
 Print run + test commands.
 ```
 
 ---
 
-## PROMPT H — M1 Frontend (Electron + React)
+## PROMPT H — M1 Frontend (Electron + React) · *Member C*
 
 ```
 Per CLAUDE.md. Implement frontend/ (React + Tailwind + Electron) calling the backend API.
 
 Goal: a clean desktop GUI — inbox, compose (with security-level selector), settings (KM + email login), connection status, alerts.
 Requirements:
-- src/api/client.ts: typed wrappers for the M2 endpoints.
+- src/api/client.ts: typed wrappers for the M2b endpoints, matching docs/api_contract.md exactly.
 - views/Settings.tsx: KM config (url, sae_id) + email login (email, app-password, provider) + default security level. Connect buttons reflect status.
 - views/Compose.tsx: to/subject/body + Level dropdown (1-4); warns if L1/L2 chosen while KM disconnected; Send calls /mail/send.
 - views/Inbox.tsx: list from /mail/fetch with SecurityBadge; clicking calls /mail/read and shows plaintext + 'verified with key <id>' when encrypted.
@@ -186,7 +292,7 @@ Then print the dev-run commands.
 
 ---
 
-## PROMPT I — Integration & packaging
+## PROMPT I — Integration & packaging · *All*
 
 ```
 Per CLAUDE.md. Wire everything end-to-end and package for Windows.
@@ -205,7 +311,9 @@ Print the full build + run sequence.
 
 ## Tips for steering Claude Code
 
-- If output drifts, reply: **"Re-read CLAUDE.md §4 constraints and revise."**
+- If output drifts, reply: **"Re-read CLAUDE.md section 4 constraints and revise."**
 - For a focused change: name the file and the function, not the whole module.
 - Ask for **tests first** on anything security-critical if you want extra safety.
 - Keep sessions per-module; long sessions lose focus. Commit between modules.
+- Never paste real credentials into a prompt — they belong in `.env`.
+- If a teammate's module isn't ready yet, ask Claude to code against the interface in `core/interfaces.py` and use a fake in tests.
