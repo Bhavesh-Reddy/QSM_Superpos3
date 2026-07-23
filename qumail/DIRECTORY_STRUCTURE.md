@@ -26,7 +26,11 @@ qumail/
 │   └── app/
 │       ├── __init__.py
 │       ├── config.py             # loads .env via pydantic-settings
-│       ├── api/                  # M2 — FastAPI routers (thin; delegate to modules)
+│       ├── services/             # M2a — orchestration (Member B)
+│       │   ├── __init__.py
+│       │   ├── send_service.py   # key -> encrypt -> send
+│       │   └── receive_service.py# fetch -> key -> decrypt
+│       ├── api/                  # M2b — HTTP surface (Member C); thin routers, delegate to services
 │       │   ├── __init__.py
 │       │   ├── routes_auth.py    # KM login, email login
 │       │   ├── routes_mail.py    # send, fetch, read
@@ -106,7 +110,7 @@ qumail/
 | Member | Folders |
 |--------|---------|
 | **A — Quantum & Keys** | `km_simulator/`, `backend/app/km/`, `backend/app/keystore/` |
-| **B — Security Core**  | `backend/app/crypto/`, `core/` (shared), most of `tests/` |
+| **B — Security Core**  | `core/`, `backend/app/crypto/`, `backend/app/services/`, most of `tests/` |
 | **C — App & Integration** | `frontend/`, `backend/app/email_svc/`, `backend/app/api/`, packaging |
 
 Shared: `core/interfaces.py`, `docs/api_contract.md`, integration tests.

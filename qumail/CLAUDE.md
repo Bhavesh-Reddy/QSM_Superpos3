@@ -49,7 +49,8 @@ GUI (Electron/React)  <--HTTP-->  Backend API (FastAPI)
 ```
 
 - **M1 GUI** — `frontend/`. React + Tailwind, wrapped in Electron. Talks only to the backend API.
-- **M2 API/Core** — `backend/app/`. FastAPI routes + orchestration. No crypto logic inline; delegates to M3/M4/M5.
+- **M2a Services** — `backend/app/services/`. Orchestration pipelines: key -> encrypt -> send (`SendService`) and fetch -> key -> decrypt (`ReceiveService`). Services import ONLY `core/interfaces.py` contracts and must contain **no FastAPI imports**.
+- **M2b API** — `backend/app/api/`. FastAPI routers, request/response schemas, and mapping of typed exceptions to HTTP codes. Thin layer; delegates all work to M2a services.
 - **M3 CryptoEngine** — `backend/app/crypto/`. All four levels behind one `CryptoEngine` class.
 - **M4 KMClient** — `backend/app/km/`. ETSI 014 REST client.
 - **M5 EmailService** — `backend/app/email_svc/`. SMTP send + IMAP fetch + MIME (.qenc) packing.
