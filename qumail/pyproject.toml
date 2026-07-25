@@ -1,0 +1,35 @@
+[project]
+name = "qumail"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "pydantic>=2.0",
+    "pycryptodome>=3.20",
+    "httpx",
+]
+
+[project.optional-dependencies]
+pqc = ["liboqs-python"]
+dev = ["pytest", "ruff", "black"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+
+[tool.black]
+line-length = 88
+target-version = ["py311"]
+
+[tool.pyright]
+pythonVersion = "3.11"
+pythonPlatform = "All"
+extraPaths = ["."]
