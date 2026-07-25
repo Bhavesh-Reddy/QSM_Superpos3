@@ -197,6 +197,8 @@ class IKeyStore(abc.ABC):
 
         Raises:
             KeyNotFoundError: If ``key_id`` is not in the store.
+            KeyExhaustedError: If the key exists but was already consumed
+                (single-use enforcement — the material is spent).
         """
 
     @abc.abstractmethod
