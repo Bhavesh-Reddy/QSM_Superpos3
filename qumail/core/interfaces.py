@@ -82,61 +82,59 @@ class IKMClient(abc.ABC):
     """ETSI GS QKD 014 REST client toward the Key Manager (M4)."""
 
     @abc.abstractmethod
-    def get_status(self, slave_sae_id: str) -> ETSIStatus:
-        """Query key availability for a peer SAE.
+    def get_status(self) -> ETSIStatus:
+        """Query key availability for this client's configured SAE.
 
-        Maps to ``GET /api/v1/keys/{slave_SAE_ID}/status``.
-
-        Args:
-            slave_sae_id: SAE ID of the communication peer.
+        Maps to ``GET /api/v1/keys/{SAE_ID}/status`` (the SAE ID is fixed at
+        construction time).
 
         Returns:
             The KM's status document.
 
         Raises:
-            KMConnectionError: If the KM is unreachable.
+            KMConnectionError: If the KM is unreachable or returns an HTTP error.
             KMResponseError: If the response is not valid ETSI 014 JSON.
         """
 
     @abc.abstractmethod
     def get_key(
-        self, slave_sae_id: str, number: int = 1, size: int = 256
+        self, target_sae_id: str, number: int = 1, size: int = 256
     ) -> list[QKDKey]:
         """Request fresh keys for encrypting toward a peer.
 
-        Maps to ``POST /api/v1/keys/{slave_SAE_ID}/enc_keys``.
+        Maps to ``POST /api/v1/keys/{target_SAE_ID}/enc_keys``.
 
         Args:
-            slave_sae_id: SAE ID of the communication peer.
+            target_sae_id: SAE ID of the communication peer (the recipient).
             number: How many keys to request.
             size: Key size in bits.
 
         Returns:
-            Keys with KM-assigned ``key_id``s (base64 already decoded).
+            Keys with KM-assigned ``key_id``s (base64 already decoded to bytes).
 
         Raises:
-            KMConnectionError: If the KM is unreachable.
+            KMConnectionError: If the KM is unreachable or returns an HTTP error.
             KeyExhaustedError: If the KM has insufficient key material.
         """
 
     @abc.abstractmethod
     def get_key_with_ids(
-        self, master_sae_id: str, key_ids: list[str]
+        self, source_sae_id: str, key_ids: list[str]
     ) -> list[QKDKey]:
         """Fetch the keys matching IDs received from a peer.
 
-        Maps to ``POST /api/v1/keys/{master_SAE_ID}/dec_keys``.
+        Maps to ``POST /api/v1/keys/{source_SAE_ID}/dec_keys``.
 
         Args:
-            master_sae_id: SAE ID of the sender who requested the keys.
+            source_sae_id: SAE ID of the sender who requested the keys.
             key_ids: ``key_ID`` values from the message metadata.
 
         Returns:
-            The matching keys.
+            The matching keys (base64 already decoded to bytes).
 
         Raises:
-            KMConnectionError: If the KM is unreachable.
-            KMResponseError: If any requested ID is unknown to the KM.
+            KMConnectionError: If the KM is unreachable or returns an HTTP error.
+            KeyNotFoundError: If any requested ``key_ID`` is unknown to the KM.
         """
 
 
