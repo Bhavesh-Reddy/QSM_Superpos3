@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/vite-env.d.ts","./src/api/client.ts","./src/components/alertlist.tsx","./src/components/connectionstatus.tsx","./src/components/securitybadge.tsx","./src/components/sidebar.tsx","./src/context/appcontext.tsx","./src/views/compose.tsx","./src/views/inbox.tsx","./src/views/settings.tsx"],"version":"5.9.3"}
