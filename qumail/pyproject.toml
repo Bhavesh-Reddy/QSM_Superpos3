@@ -18,6 +18,9 @@ dev = ["pytest", "ruff", "black"]
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+markers = [
+    "integration: end-to-end tests that start the KM simulator (deselect with -m 'not integration')",
+]
 
 [tool.ruff]
 line-length = 88

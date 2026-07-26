@@ -1,0 +1,19 @@
+# QuMail backend + KM simulator runtime dependencies.
+# (Authoritative source is pyproject.toml; this mirror is handy for pip/CI/PyInstaller.)
+fastapi
+uvicorn[standard]
+pydantic>=2.0
+pydantic-settings>=2.0
+pycryptodome>=3.20
+httpx
+
+# --- Optional extras ---------------------------------------------------------
+# Level-3 post-quantum crypto (ML-KEM-768 / ML-DSA-65):
+#   liboqs-python
+# Quantum QRNG + BB84 in the simulator (falls back to the OS CSPRNG if absent):
+#   qiskit>=2.0
+#   qiskit-aer
+# Dev tooling:
+#   pytest ruff black
+# Packaging:
+#   pyinstaller

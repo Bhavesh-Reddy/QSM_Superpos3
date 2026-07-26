@@ -32,7 +32,10 @@
   },
   "build": {
     "appId": "com.superpos3.qumail",
+    "productName": "QuMail",
     "files": ["dist/**/*", "electron/**/*"],
-    "directories": { "output": "release" }
+    "directories": { "output": "release" },
+    "win": { "target": ["nsis"] },
+    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true }
   }
 }

@@ -1,0 +1,34 @@
+# --- Secrets & runtime state -------------------------------------------------
+.env
+*.enc
+keystore.json
+keystore.json.*
+
+# --- Python ------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# --- Packaging / build output ------------------------------------------------
+build/
+dist/
+release/
+*.manifest
+*.pkg
+
+# --- Node / frontend ---------------------------------------------------------
+node_modules/
+frontend/dist/
+frontend/release/
+*.tsbuildinfo
+
+# --- Editor / OS -------------------------------------------------------------
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
