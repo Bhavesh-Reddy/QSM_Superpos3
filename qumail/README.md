@@ -15,7 +15,10 @@ stands in for real QKD hardware during development.
 | 3 | PQC | ML-KEM-768 + ML-DSA-65 + AES-GCM |
 | 4 | None | plaintext (compatibility) |
 
-See [`docs/architecture.md`](docs/architecture.md),
+**New here? Start with [`docs/usage.md`](docs/usage.md)** — how to connect, send,
+and read mail, plus the Gmail App Password fix for "SMTP authentication failed."
+
+See also [`docs/architecture.md`](docs/architecture.md),
 [`docs/api_contract.md`](docs/api_contract.md), and
 [`docs/etsi_qkd_014.md`](docs/etsi_qkd_014.md).
 
