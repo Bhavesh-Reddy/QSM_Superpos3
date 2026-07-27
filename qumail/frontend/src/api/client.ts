@@ -63,6 +63,7 @@ export interface SendResponse {
 }
 
 export interface MessageSummary {
+  message_id: string;
   sender: string;
   recipient: string;
   subject: string;

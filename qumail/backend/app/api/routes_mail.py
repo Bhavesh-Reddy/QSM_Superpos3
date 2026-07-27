@@ -55,6 +55,7 @@ class SendResponse(BaseModel):
 class MessageSummary(BaseModel):
     """One entry of ``GET /mail/fetch`` — never ciphertext or key bytes."""
 
+    message_id: str
     sender: str
     recipient: str
     subject: str
@@ -166,12 +167,14 @@ def _summarize(message: EmailMessage) -> MessageSummary:
     ``backend/app/email_svc/receiver.py``); never touches ciphertext or
     ``key_id`` — those stay server-side until an explicit ``/mail/read``.
     """
-    body_envelope = (message.security_metadata or {}).get("body")
+    metadata = message.security_metadata or {}
+    body_envelope = metadata.get("body")
     level = SecurityLevel(body_envelope["level"]) if body_envelope else None
     algorithm = (
         (body_envelope.get("metadata") or {}).get("algorithm") if body_envelope else None
     )
     return MessageSummary(
+        message_id=str(metadata.get("message_id", "")),
         sender=message.sender,
         recipient=message.recipient,
         subject=message.subject,

@@ -211,7 +211,46 @@ attachment plus a "sent with QuMail" notice — that's expected.
 
 ---
 
-## 9. Where credentials live
+## 9. Sharing one Key Manager between two machines
+
+Encrypted mail (levels 1–3) can only be decrypted by a QuMail whose KM holds
+the key the sender used. Two people each running their own local simulator do
+**not** share keys — the receiver gets `KeyNotFoundError` / *"KM did not return
+key_ID"*. Both must point at **one** KM.
+
+**Host the shared KM** (one person), from `qumail/`:
+
+```powershell
+$env:QUMAIL_KM_HOST = "0.0.0.0"        # bind on the network (default is 127.0.0.1)
+.\.venv\Scripts\python.exe -m km_simulator.main
+ipconfig                               # note the host's IPv4 address, e.g. 192.168.1.42
+```
+
+Allow the port through Windows Firewall (once, as admin) if prompted:
+
+```powershell
+netsh advfirewall firewall add rule name="QuMail KM" dir=in action=allow protocol=TCP localport=8100
+```
+
+**Both people** set, in QuMail → Settings → Key Manager:
+
+- Base URL: `http://<host-ip>:8100` (e.g. `http://192.168.1.42:8100`)
+- SAE ID: any (the simulator ignores it for key storage)
+
+On different networks / firewall trouble? Tunnel instead — no IP or firewall
+setup: run `ngrok http 8100` on the host and both use the printed `https://…`
+URL as the base URL (leave verify-TLS on).
+
+Env vars: `QUMAIL_KM_HOST` (default `127.0.0.1`), `QUMAIL_KM_PORT` (default
+`8100`).
+
+> Keys live *in* the KM instance that issued them. A message already sent
+> against a different KM can't be decrypted retroactively — set up the shared
+> KM first, then send a **fresh** message.
+
+---
+
+## 10. Where credentials live
 
 - The **email App Password** is held only in the running backend process (in the
   connected `EmailService`); it is never written to disk, logged, or returned in

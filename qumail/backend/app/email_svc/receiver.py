@@ -61,22 +61,32 @@ class Receiver:
                 try:
                     imap.login(self._account.address, self._account.password)
                 except imaplib.IMAP4.error as exc:
+                    # Log Google's actual response (no password in it) so we can
+                    # see why, e.g. "[AUTHENTICATIONFAILED] Invalid credentials".
+                    logger.warning(
+                        "IMAP auth rejected by %s for %s: %s",
+                        preset.imap_host,
+                        self._account.address,
+                        exc,
+                    )
                     raise EmailError("IMAP authentication failed (use an app password)") from exc
 
                 imap.select(folder, readonly=True)
-                status, data = imap.search(None, "ALL")
+                # Use UIDs (stable across the session) so the message_id we
+                # hand the frontend still resolves on a later /mail/read.
+                status, data = imap.uid("search", "ALL")
                 if status != "OK":
                     raise EmailFetchError(f"IMAP search failed in '{folder}'")
 
-                ids = data[0].split()
-                recent_ids = ids[-limit:] if limit else ids
+                uids = data[0].split()
+                recent = uids[-limit:] if limit else uids
                 messages: list[EmailMessage] = []
-                for msg_id in reversed(recent_ids):  # newest first
-                    status, raw_data = imap.fetch(msg_id, "(RFC822)")
+                for uid in reversed(recent):  # newest first
+                    status, raw_data = imap.uid("fetch", uid, "(RFC822)")
                     if status != "OK" or not raw_data or raw_data[0] is None:
                         continue
                     raw = raw_data[0][1]
-                    messages.append(self._to_email_message(raw))
+                    messages.append(self._to_email_message(raw, uid.decode("ascii")))
                 return messages
         except EmailError:
             raise
@@ -84,15 +94,18 @@ class Receiver:
             raise EmailFetchError(f"IMAP fetch failed: {exc}") from exc
 
     @staticmethod
-    def _to_email_message(raw: bytes) -> EmailMessage:
+    def _to_email_message(raw: bytes, message_id: str) -> EmailMessage:
         """Convert raw RFC822 bytes into a core :class:`EmailMessage`.
 
         Args:
             raw: The raw message bytes.
+            message_id: The IMAP UID, stashed in ``security_metadata`` so a
+                later ``/mail/read`` can locate this exact message.
 
         Returns:
-            A parsed message. QuMail messages have ``security_metadata`` set
-            and an empty body; ordinary mail has its plain-text body.
+            A parsed message. QuMail messages carry their ciphertext in
+            ``security_metadata``; ordinary mail has its plain-text body. Both
+            carry ``security_metadata["message_id"]``.
         """
         headers = email.message_from_bytes(raw, policy=default_policy)
         sender = str(headers["From"] or "")
@@ -111,11 +124,13 @@ class Receiver:
                 recipient=recipient or "unknown@unknown",
                 subject=str(headers["Subject"] or ""),
                 body=body,
+                security_metadata={"message_id": message_id},
             )
         else:
             # Carry ciphertext (base64) + metadata for the decryptor; no keys.
             security_metadata: dict[str, object] = {
                 "qumail": True,
+                "message_id": message_id,
                 "body": {
                     "level": int(parsed.body.level),
                     "metadata": parsed.body.metadata,

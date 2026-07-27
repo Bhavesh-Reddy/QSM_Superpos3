@@ -35,10 +35,7 @@ export default function Inbox() {
     setOpened(null);
     setOpening(true);
     try {
-      // GET /mail/fetch summaries carry no stable message id yet
-      // (docs/api_contract.md §5.1) — list position is the best
-      // identifier available until the backend stashes a real one.
-      const result = await readMail({ message_id: String(index) });
+      const result = await readMail({ message_id: messages[index].message_id });
       setOpened(result);
     } catch (err) {
       pushAlert("error", err instanceof ApiError ? err.message : "Failed to open message.");

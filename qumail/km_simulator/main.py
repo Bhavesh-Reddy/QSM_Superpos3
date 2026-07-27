@@ -17,6 +17,7 @@ from __future__ import annotations
 import base64
 import itertools
 import logging
+import os
 import threading
 
 import uvicorn
@@ -227,9 +228,19 @@ def post_dec_keys(sae_id: str, request: ETSIKeyIDsRequest) -> ETSIKeyContainer:
 
 
 def main() -> None:
-    """Run the simulator with uvicorn on port 8100."""
+    """Run the simulator with uvicorn.
+
+    Host/port come from the environment so one teammate can host a *shared*
+    KM that others reach over the network:
+
+        QUMAIL_KM_HOST  bind address (default 127.0.0.1; set 0.0.0.0 to share)
+        QUMAIL_KM_PORT  port (default 8100)
+    """
     logging.basicConfig(level=logging.INFO)
-    uvicorn.run(app, host="127.0.0.1", port=PORT)
+    host = os.environ.get("QUMAIL_KM_HOST", "127.0.0.1")
+    port = int(os.environ.get("QUMAIL_KM_PORT", PORT))
+    logger.info("KM simulator binding on %s:%d", host, port)
+    uvicorn.run(app, host=host, port=port)
 
 
 if __name__ == "__main__":

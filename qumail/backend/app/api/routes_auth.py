@@ -95,15 +95,21 @@ def connect_email(
         ConfigError: If an explicit ``provider`` is not one QuMail knows.
         EmailError: If the provider cannot be auto-detected from the domain.
     """
+    # Gmail/Yahoo/Outlook app passwords are shown to users in spaced groups
+    # ("abcd efgh ijkl mnop"); those spaces are display-only and must be
+    # stripped or SMTP/IMAP login fails. App passwords never contain spaces.
+    email_address = payload.email.strip()
+    app_password = "".join(payload.password.split())
+
     if payload.provider is not None:
         preset = PROVIDER_PRESETS.get(payload.provider)
         if preset is None:
             raise ConfigError(f"unknown email provider '{payload.provider}'")
-        account = EmailAccount(payload.email, payload.password, preset)
+        account = EmailAccount(email_address, app_password, preset)
         provider_name = payload.provider
     else:
-        account = EmailAccount.from_address(payload.email, payload.password)
-        provider_name = detect_provider(payload.email)
+        account = EmailAccount.from_address(email_address, app_password)
+        provider_name = detect_provider(email_address)
 
     state.mail = EmailService(account)
     logger.info("email connected: address=%s provider=%s", account.address, provider_name)

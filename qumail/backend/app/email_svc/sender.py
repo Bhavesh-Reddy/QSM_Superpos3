@@ -147,6 +147,16 @@ class Sender:
                 smtp.login(self._account.address, self._account.password)
                 smtp.send_message(mime_message)
         except smtplib.SMTPAuthenticationError as exc:
+            # Log Google's actual rejection (contains no password) so the real
+            # cause is visible, e.g. "534 5.7.9 Application-specific password
+            # required" vs "535 5.7.8 Username and Password not accepted".
+            logger.warning(
+                "SMTP auth rejected by %s for %s: code=%s detail=%s",
+                preset.smtp_host,
+                self._account.address,
+                getattr(exc, "smtp_code", "?"),
+                getattr(exc, "smtp_error", b"").decode("utf-8", "replace"),
+            )
             raise EmailSendError("SMTP authentication failed (use an app password)") from exc
         except (smtplib.SMTPException, OSError) as exc:
             raise EmailSendError(f"SMTP send failed: {exc}") from exc
