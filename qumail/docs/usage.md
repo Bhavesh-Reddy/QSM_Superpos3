@@ -1,14 +1,102 @@
 # QuMail — Usage & Troubleshooting Guide
 
 How to connect, send, and read mail with QuMail — and how to fix the common
-"SMTP authentication failed" error. For install/build steps see the
+"SMTP authentication failed" error. For build/packaging see the
 [README](../README.md); for internals see [architecture.md](architecture.md).
 
 ---
 
-## 1. Before you start
+## 1. Commands to run the application
 
-Make sure all three services are running (see the README "Run" section):
+All commands run from the `qumail/` project root.
+
+### 1.1 First-time setup (once)
+
+```powershell
+cd qumail
+
+# Python backend + KM simulator
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt pytest
+
+# Config: copy the template and set a keystore password
+copy .env.example .env
+#   then edit .env and set KEYSTORE_MASTER_PASSWORD to any non-empty value
+
+# Frontend
+cd frontend
+npm install
+cd ..
+```
+
+Bash / Git Bash / WSL equivalents:
+
+```bash
+cd qumail
+python -m venv .venv
+./.venv/Scripts/python.exe -m pip install -r requirements.txt pytest   # or .venv/bin/python on Linux/macOS
+cp .env.example .env            # then set KEYSTORE_MASTER_PASSWORD
+( cd frontend && npm install )
+```
+
+### 1.2 Start the three services (three separate terminals)
+
+Use the helper scripts (they pick up the venv and check for `.env`):
+
+```powershell
+# Terminal 1 — KM simulator on :8100
+scripts\run_simulator.bat
+
+# Terminal 2 — backend API on :8000   (needs .env)
+scripts\run_backend.bat
+
+# Terminal 3 — frontend dev server on :5173
+scripts\run_frontend.bat
+```
+
+Bash: `bash scripts/run_simulator.sh`, `bash scripts/run_backend.sh`,
+`bash scripts/run_frontend.sh`.
+
+Prefer the Electron desktop shell instead of the browser tab?
+`cd frontend && npm run electron:dev` (in place of terminal 3).
+
+### 1.3 Equivalent raw commands (no scripts)
+
+If you'd rather run the processes directly:
+
+```powershell
+# Terminal 1
+.\.venv\Scripts\python.exe -m km_simulator.main         # KM simulator :8100
+
+# Terminal 2
+.\.venv\Scripts\python.exe -m backend.main              # backend API :8000
+
+# Terminal 3
+cd frontend
+npm run dev                                             # frontend :5173
+```
+
+### 1.4 Verify it's up (optional smoke checks)
+
+```powershell
+curl http://127.0.0.1:8100/api/v1/keys/SAE-ALICE/status   # KM simulator
+curl http://127.0.0.1:8000/health                         # backend  -> {"status":"ok",...}
+```
+
+Then open **http://localhost:5173** in your browser.
+
+### 1.5 Run the tests (optional)
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests/ -q                 # full suite
+.\.venv\Scripts\python.exe -m pytest tests/integration/ -v     # end-to-end flow
+```
+
+---
+
+## 2. Before you start (services checklist)
+
+Confirm all three are running:
 
 | Service | URL | Started by |
 |---------|-----|-----------|
@@ -20,14 +108,14 @@ Open the frontend at **http://localhost:5173**.
 
 ---
 
-## 2. Connect the Key Manager and your mailbox
+## 3. Connect the Key Manager and your mailbox
 
 In **Settings**:
 
 1. **Key Manager** — base URL `http://127.0.0.1:8100`, SAE ID `SAE-ALICE`
    (the default). On success you'll see *"Connected to Key Manager · N keys
    available."*
-2. **Mailbox** — your email address + **App Password** (see §3). On success you'll
+2. **Mailbox** — your email address + **App Password** (see §4). On success you'll
    see *"Mailbox connected."*
 
 > ⚠️ **"Mailbox connected" does not verify your login.** Connecting only stores
@@ -38,7 +126,7 @@ In **Settings**:
 
 ---
 
-## 3. Gmail requires an App Password (fixes "SMTP authentication failed")
+## 4. Gmail requires an App Password (fixes "SMTP authentication failed")
 
 Google blocks basic-auth passwords for SMTP/IMAP. Using your normal Google
 password produces:
@@ -65,7 +153,7 @@ easiest to demo with**. Provider hosts are auto-detected from the address domain
 
 ---
 
-## 4. Send a message
+## 5. Send a message
 
 In **Compose**:
 
@@ -85,7 +173,7 @@ In **Compose**:
 
 ---
 
-## 5. Read a message
+## 6. Read a message
 
 Open **Inbox** → click a message. QuMail calls `POST /mail/read`, which resolves
 the key (local key store first, then the KM's `dec_keys`) and decrypts
@@ -93,7 +181,7 @@ server-side, then shows the plaintext. Raw keys never reach the browser.
 
 ---
 
-## 6. Demo tips (important)
+## 7. Demo tips (important)
 
 An encrypted QuMail message can **only be decrypted by a QuMail client pointed
 at the same Key Manager**. In a normal Gmail web view it looks like an
@@ -109,21 +197,21 @@ attachment plus a "sent with QuMail" notice — that's expected.
 
 ---
 
-## 7. Troubleshooting
+## 8. Troubleshooting
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| *SMTP authentication failed (use an app password)* | Normal password used for Gmail/Yahoo/Outlook | Use an **App Password** (§3) |
-| Inbox is empty / IMAP error | IMAP disabled on the account | Enable IMAP in provider settings (§3 step 4) |
+| *SMTP authentication failed (use an app password)* | Normal password used for Gmail/Yahoo/Outlook | Use an **App Password** (§4) |
+| Inbox is empty / IMAP error | IMAP disabled on the account | Enable IMAP in provider settings (§4 step 4) |
 | *unknown email provider for domain '…'* | Address domain isn't gmail/yahoo/outlook | Use a supported provider, or pass an explicit `provider` |
-| *KM not connected; call POST /auth/km first* | KM step skipped | Connect the Key Manager in Settings (§2) |
+| *KM not connected; call POST /auth/km first* | KM step skipped | Connect the Key Manager in Settings (§3) |
 | KM shows 0 keys / connection refused | Simulator not running | Start `scripts/run_simulator.bat` (port 8100) |
 | Backend won't start: missing `KEYSTORE_MASTER_PASSWORD` | No `.env` | `copy .env.example .env` and set the password |
-| *KM did not return key_ID* on read | Reading on a different machine/KM than the sender used | Point both sides at the **same** KM (§6) |
+| *KM did not return key_ID* on read | Reading on a different machine/KM than the sender used | Point both sides at the **same** KM (§7) |
 
 ---
 
-## 8. Where credentials live
+## 9. Where credentials live
 
 - The **email App Password** is held only in the running backend process (in the
   connected `EmailService`); it is never written to disk, logged, or returned in
